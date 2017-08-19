@@ -11,5 +11,6 @@ readFiles <- function(fileName){
         assign(fileName,read.csv(unz(paste0(fileName, ".csv.zip"), paste0(fileName, ".csv"))),envir=globalenv())
 }
 
+
 readFiles("aisles")
-head(data)
+readFiles("departments")
