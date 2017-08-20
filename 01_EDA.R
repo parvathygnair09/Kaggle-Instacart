@@ -82,25 +82,49 @@ orders.combined <- orders.combined %>%
 
 table(orders.combined$order_dow, orders.combined$orders.weekday)
 
-## Day of the week analysis
+## 1. Day of the week analysis
 orders.combined %>% 
+  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
   ggplot(aes(x = orders.weekday, fill = orders.weekday)) +
-  geom_bar(color = "black", width = 1) +
+  geom_bar(width = 0.5) +
   labs( x = "Weekday", y = "Number of Orders") +
   labs(title = "Purchase Pattern Day of the Week") +
   guides(fill = FALSE) + 
-  # coord_flip() +
+  coord_flip() +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank()) +
   theme(plot.title = element_text(size=10)) +
   scale_y_continuous(label = scales::comma) +
-  scale_fill_brewer(palette = "pastel1")
+  scale_fill_hue()
 ## Maximum orders in Sunday, followed by Saturday and Monday. Lowest on Wednesday, Thursday. 
 
+## 2. Hour of the day analysis
 orders.combined %>% 
+  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
   group_by(orders.weekday, order_hour_of_day) %>% 
-  summarise(count = n()) %>% 
-  ggplot(aes(x = order_hour_of_day, y = count, color = department)) + 
-  geom_line()
+  summarise(tot.orders = n()) %>% 
+  ggplot(aes(x = order_hour_of_day, y = orders.weekday, fill = tot.orders)) + 
+  geom_raster() +
+  scale_fill_gradientn(colours = c("white", "lightgreen", "green", "darkgreen")) +
+  labs( x = "Hour of the Day", y = "Day of the Week") +
+  labs(title = "Purchase Pattern by Day of the Week and Hour") +
+  labs(fill = "# of Orders")
+## Order numbers peak during Sunday 10 - 4, with maximum orders during 2PM. 
+  
 
+## 3. Hour of the day analysis
+orders.combined %>% 
+  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
+  group_by(orders.weekday, order_hour_of_day) %>% 
+  summarise(tot.orders = n()) %>% 
+  ggplot(aes(x = order_hour_of_day,y = tot.orders, fill = orders.weekday)) + 
+  geom_bar(stat = "identity", position = "dodge")
+ 
+## 4. Hour of the day analysis
+orders.combined %>% 
+  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
+  group_by(orders.weekday, order_hour_of_day) %>% 
+  summarise(tot.orders = n()) %>% 
+  ggplot(aes(x = order_hour_of_day,y = tot.orders, color = orders.weekday)) + 
+  geom_line() 
 
