@@ -29,11 +29,9 @@ filesList <- c("aisles", "departments", "order_products__prior",
                "order_products__train", "orders", "products")
 lapply(filesList, readFiles)
 
-## Save as R datasets
-save(aisles, file = "aisles.RData")
-save(departments, file = "departments.RData")
-save(orders, file = "orders.RData")
-save(products, file = "products.RData")
+# Saving the environment to avoid reading the files everytime
+# save.image("./initialRead.RData")
+# load("./initialRead.RData")
 
 ##===================
 ## Data Summary
