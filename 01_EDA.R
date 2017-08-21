@@ -100,8 +100,8 @@ orders.combined %>%
 orders.combined %>% 
   mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
   group_by(orders.weekday, order_hour_of_day) %>% 
-  summarise(tot.orders = n()) %>% 
-  ggplot(aes(x = order_hour_of_day, y = orders.weekday, fill = tot.orders)) + 
+  summarise(tot.orders = n()) %>% group_by(orders.weekday) %>% mutate(pctOrder=100*tot.orders/sum(tot.orders)) %>% 
+  ggplot(aes(x = order_hour_of_day, y = orders.weekday, fill = pctOrder)) + 
   geom_raster() +
   scale_fill_gradientn(colours = c("white", "lightgreen", "green", "darkgreen")) +
   labs( x = "Hour of the Day", y = "Day of the Week") +
@@ -111,14 +111,6 @@ orders.combined %>%
   
 
 ## 3. Hour of the day analysis
-orders.combined %>% 
-  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
-  group_by(orders.weekday, order_hour_of_day) %>% 
-  summarise(tot.orders = n()) %>% 
-  ggplot(aes(x = order_hour_of_day,y = tot.orders, fill = orders.weekday)) + 
-  geom_bar(stat = "identity", position = "dodge")
- 
-## 4. Hour of the day analysis
 orders.combined %>% 
   mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
   group_by(orders.weekday, order_hour_of_day) %>% 
