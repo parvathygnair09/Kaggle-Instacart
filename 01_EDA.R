@@ -130,7 +130,7 @@ orders.combined %>%
         scale_color_brewer(palette = "Dark2")
 
 
-## 4. Product Analysis
+## 4. Product Department Analysis
 orders.combined %>% 
         group_by(department) %>% 
         summarise(tot.orders = n()) %>% 
@@ -141,7 +141,7 @@ orders.combined %>%
                 #fontface = "italic",
                 colour = "black",
                 place = "centre",
-                grow = TRUE
+                grow = FALSE
         ) +
         labs(
                 title = "Orders by Product Departments",
@@ -154,3 +154,33 @@ orders.combined %>%
 
 ## Treemap package: Installed from https://github.com/wilkox/treemapify
 
+
+## 5. Product Aisle Analysis - Most re-ordered products
+orders.combined %>%
+  group_by(aisle) %>% 
+  summarise(tot.orders = n()) %>% 
+  left_join(
+orders.combined %>% 
+  filter(reordered == 1) %>% 
+  group_by(aisle, reordered) %>% 
+  summarise(re.tot.orders = n()) , by = "aisle") %>% ungroup() %>% 
+  mutate(pctOrder = 100 * (re.tot.orders/sum(tot.orders))) %>% filter(pctOrder >= 1) %>% 
+  ggplot(aes(x = tot.orders, y = pctOrder, color = aisle)) +
+  geom_point(size = 0.1) +
+  geom_text(aes(label = aisle), size = 4) +
+  guides(color = FALSE) + 
+  labs(title = "Top Re-ordered Products") +
+  labs( x = "Number of Orders (in thousands)", y = "Reorders as % of Total Orders ") 
+## Fresh fruits and vegetable are the among the most re-ordered items.  
+
+## Same analysis as above with word cloud
+## Word Cloud
+aisle.freq <- as.data.frame(orders.combined) %>%
+  filter(reordered == 1) %>% 
+  group_by(aisle, reordered) %>% 
+  summarise(tot.orders = n()) %>% 
+  select(-c(reordered)) %>% 
+  rename(word = aisle, freq = tot.orders)
+
+wordcloud2::wordcloud2(aisle.freq, size = 0.6)
+## Reference: https://cran.r-project.org/web/packages/hunspell/vignettes/intro.html
