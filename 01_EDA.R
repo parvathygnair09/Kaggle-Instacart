@@ -101,15 +101,15 @@ orders.combined %>%
 
 ## 2. Hour of the day analysis
 orders.combined %>% 
-        mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
-        group_by(orders.weekday, order_hour_of_day) %>% 
-        summarise(tot.orders = n()) %>% group_by(orders.weekday) %>% mutate(pctOrder=100*tot.orders/sum(tot.orders)) %>% 
-        ggplot(aes(x = order_hour_of_day, y = orders.weekday, fill = pctOrder)) + 
-        geom_raster() +
-        scale_fill_gradientn(colours = c("white", "lightgreen", "green", "darkgreen")) +
-        labs( x = "Hour of the Day", y = "Day of the Week") +
-        labs(title = "Purchase Pattern by Day of the Week and Hour") +
-        labs(fill = "% of Daily Orders") 
+  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
+  group_by(orders.weekday, order_hour_of_day) %>% 
+  summarise(tot.orders = n()) %>% group_by(orders.weekday) %>% mutate(pctOrder=100*tot.orders/sum(tot.orders)) %>% 
+  ggplot(aes(x = order_hour_of_day, y = orders.weekday, fill = pctOrder)) + 
+  geom_raster() +
+  scale_fill_gradientn(colours = c("white", "lightgreen", "green", "darkgreen")) +
+  labs( x = "Hour of the Day", y = "Day of the Week") +
+  labs(title = "Purchase Pattern by Day of the Week and Hour") +
+  labs(fill = "% of Daily Orders") 
 ## Order numbers peak during Sunday 10 - 4, with maximum orders during 2PM. 
   
 
