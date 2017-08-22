@@ -14,6 +14,9 @@ library(summarytools)
 library(ggplot2)
 library(scales)
 library(vcd)
+library(forcats)
+library(devtools)
+library(treemapify)
 
 ##=====================
 ## Read Files
@@ -106,7 +109,7 @@ orders.combined %>%
   scale_fill_gradientn(colours = c("white", "lightgreen", "green", "darkgreen")) +
   labs( x = "Hour of the Day", y = "Day of the Week") +
   labs(title = "Purchase Pattern by Day of the Week and Hour") +
-  labs(fill = "# of Orders")
+  labs(fill = "% of Daily Orders") 
 ## Order numbers peak during Sunday 10 - 4, with maximum orders during 2PM. 
   
 
@@ -115,6 +118,31 @@ orders.combined %>%
   mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
   group_by(orders.weekday, order_hour_of_day) %>% 
   summarise(tot.orders = n()) %>% 
-  ggplot(aes(x = order_hour_of_day,y = tot.orders, color = orders.weekday)) + 
-  geom_line() 
+  ggplot(aes(x = order_hour_of_day,y = tot.orders, color = orders.weekday, group = orders.weekday)) + 
+  geom_line(size = 1.2) +
+  labs( x = "Hour of the Day", y = "Number of Orders") +
+  labs(title = "Purchase Pattern by Day of the Week and Hour") +
+  theme(legend.position=c(0.9, 0.8)) +
+  theme(legend.background=element_blank()) + 
+  theme(legend.key=element_blank()) +
+  labs(color = "Day of the Week") +
+  guides(color = guide_legend(reverse = TRUE)) +
+  scale_color_brewer(palette = "Dark2")
 
+## 4. Product Analysis
+orders.combined %>% 
+  ggplot(aes(x = forcats::fct_infreq(department), fill = department)) +
+  geom_bar() +
+  coord_flip() +
+  guides(fill = FALSE) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(plot.title = element_text(size=10)) +
+  scale_y_continuous(label = scales::comma) +
+  labs( x = "Departments", y = "Number of Orders") +
+  labs(title = "Purchase Pattern by Day of the Week and Hour") +
+  scale_fill_hue()
+
+orders.combined %>% 
+  ggplot(aes(x = department, fill = department)) +
+  treemapify::geom_treemap()
