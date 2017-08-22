@@ -14,6 +14,9 @@ library(summarytools)
 library(ggplot2)
 library(scales)
 library(vcd)
+library(forcats)
+library(devtools)
+library(treemapify)
 
 ##=====================
 ## Read Files
@@ -82,39 +85,72 @@ table(orders.combined$order_dow, orders.combined$orders.weekday)
 
 ## 1. Day of the week analysis
 orders.combined %>% 
-  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
-  ggplot(aes(x = orders.weekday, fill = orders.weekday)) +
-  geom_bar(width = 0.5) +
-  labs( x = "Weekday", y = "Number of Orders") +
-  labs(title = "Purchase Pattern Day of the Week") +
-  guides(fill = FALSE) + 
-  coord_flip() +
-  theme(panel.grid.major = element_blank(),
+        mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
+        ggplot(aes(x = orders.weekday, fill = orders.weekday)) +
+        geom_bar(width = 0.5) +
+        labs( x = "Weekday", y = "Number of Orders") +
+        labs(title = "Purchase Pattern Day of the Week") +
+        guides(fill = FALSE) + 
+        coord_flip() +
+        theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank()) +
-  theme(plot.title = element_text(size=10)) +
-  scale_y_continuous(label = scales::comma) +
-  scale_fill_hue()
+        theme(plot.title = element_text(size=10)) +
+        scale_y_continuous(label = scales::comma) +
+        scale_fill_hue()
 ## Maximum orders in Sunday, followed by Saturday and Monday. Lowest on Wednesday, Thursday. 
 
 ## 2. Hour of the day analysis
 orders.combined %>% 
-  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
-  group_by(orders.weekday, order_hour_of_day) %>% 
-  summarise(tot.orders = n()) %>% group_by(orders.weekday) %>% mutate(pctOrder=100*tot.orders/sum(tot.orders)) %>% 
-  ggplot(aes(x = order_hour_of_day, y = orders.weekday, fill = pctOrder)) + 
-  geom_raster() +
-  scale_fill_gradientn(colours = c("white", "lightgreen", "green", "darkgreen")) +
-  labs( x = "Hour of the Day", y = "Day of the Week") +
-  labs(title = "Purchase Pattern by Day of the Week and Hour") +
-  labs(fill = "# of Orders")
+        mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
+        group_by(orders.weekday, order_hour_of_day) %>% 
+        summarise(tot.orders = n()) %>% group_by(orders.weekday) %>% mutate(pctOrder=100*tot.orders/sum(tot.orders)) %>% 
+        ggplot(aes(x = order_hour_of_day, y = orders.weekday, fill = pctOrder)) + 
+        geom_raster() +
+        scale_fill_gradientn(colours = c("white", "lightgreen", "green", "darkgreen")) +
+        labs( x = "Hour of the Day", y = "Day of the Week") +
+        labs(title = "Purchase Pattern by Day of the Week and Hour") +
+        labs(fill = "% of Daily Orders") 
 ## Order numbers peak during Sunday 10 - 4, with maximum orders during 2PM. 
   
 
 ## 3. Hour of the day analysis
 orders.combined %>% 
-  mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
-  group_by(orders.weekday, order_hour_of_day) %>% 
-  summarise(tot.orders = n()) %>% 
-  ggplot(aes(x = order_hour_of_day,y = tot.orders, color = orders.weekday)) + 
-  geom_line() 
+        mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
+        group_by(orders.weekday, order_hour_of_day) %>% 
+        summarise(tot.orders = n()) %>% 
+        ggplot(aes(x = order_hour_of_day,y = tot.orders, color = orders.weekday, group = orders.weekday)) + 
+        geom_line(size = 1.2) +
+        labs( x = "Hour of the Day", y = "Number of Orders") +
+        labs(title = "Purchase Pattern by Day of the Week and Hour") +
+        theme(legend.position=c(0.9, 0.8)) +
+        theme(legend.background=element_blank()) + 
+        theme(legend.key=element_blank()) +
+        labs(color = "Day of the Week") +
+        guides(color = guide_legend(reverse = TRUE)) +
+        scale_color_brewer(palette = "Dark2")
+
+
+## 4. Product Analysis
+orders.combined %>% 
+        group_by(department) %>% 
+        summarise(tot.orders = n()) %>% 
+        ggplot(aes(area = tot.orders, fill = tot.orders, label = department, subgroup = department)) +
+        treemapify::geom_treemap() +
+        geom_treemap_subgroup_border(color = "grey", size = 0.5) +
+        geom_treemap_text(
+                #fontface = "italic",
+                colour = "black",
+                place = "centre",
+                grow = TRUE
+        ) +
+        labs(
+                title = "Orders by Product Departments",
+                caption = "The area and gradient of each department is proportional to the number of orders placed"
+        ) + 
+        labs(fill = "# of Orders") +
+        scale_fill_gradient2(low=muted("red"), mid="white", high=muted("lightcyan2"),
+                             midpoint=110, label = scales::comma) 
+## Most ordered is from produce department followed by dairy & eggs, snacks and beverages.
+
+## Treemap package: Installed from https://github.com/wilkox/treemapify
 
