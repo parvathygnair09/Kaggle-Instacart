@@ -1,11 +1,26 @@
-##========================================
-## Project : Instacart Market Basket Analysis
-## Source  : Kaggle
-## Title   : Data Pre-processing
-## Created : August 18, 2017
-## Modified: August 19, 2017
-## Authors : Parvathy & Raghuprasad
-##========================================
+---
+title: "01_EDA_Report"
+author: "Parvathy & Raghuprasad"
+date: "8/22/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#####========================================
+##### Project : Instacart Market Basket Analysis
+##### Source  : Kaggle
+##### Title   : Data Pre-processing
+##### Created : August 18, 2017
+##### Modified: August 19, 2017
+##### Authors : Parvathy & Raghuprasad
+#####========================================
+
+
+
+```{r, echo = FALSE, results = 'hide', warning = FALSE, message = FALSE}
 
 rm(list = ls(all = TRUE))
 
@@ -85,7 +100,12 @@ orders.combined <- orders.combined %>%
   mutate(orders.weekday = factor(orders.weekday,levels=c('Sunday','Monday','Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'),ordered=TRUE))
 
 table(orders.combined$order_dow, orders.combined$orders.weekday)
+```
 
+
+#### Orders by Day of the Week
+
+```{r, echo = FALSE}
 ## 1. Day of the week analysis
 orders.combined %>% 
         mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
@@ -101,7 +121,12 @@ orders.combined %>%
         scale_y_continuous(label = scales::comma) +
         scale_fill_hue()
 ## Maximum orders in Sunday, followed by Saturday and Monday. Lowest on Wednesday, Thursday. 
+```
 
+
+#### Pattern of Orders by Hour of the Day
+
+```{r, echo = FALSE}
 ## 2. Hour of the day analysis
 orders.combined %>% 
   mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
@@ -114,8 +139,11 @@ orders.combined %>%
   labs(title = "Purchase Pattern by Day of the Week and Hour") +
   labs(fill = "% of Daily Orders") 
 ## Order numbers peak during Sunday 10 - 4, with maximum orders during 2PM. 
-  
+```
 
+#### Distribution of orders druing each Weekday and Hour
+
+```{r, echo = FALSE}
 ## 3. Hour of the day analysis
 orders.combined %>% 
         mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
@@ -125,14 +153,19 @@ orders.combined %>%
         geom_line(size = 1.2) +
         labs( x = "Hour of the Day", y = "Number of Orders") +
         labs(title = "Purchase Pattern by Day of the Week and Hour") +
-        theme(legend.position=c(0.9, 0.8)) +
+        theme(legend.position=c(0.9, 0.7)) +
         theme(legend.background=element_blank()) + 
         theme(legend.key=element_blank()) +
         labs(color = "Day of the Week") +
         guides(color = guide_legend(reverse = TRUE)) +
         scale_color_brewer(palette = "Dark2")
+```
 
 
+
+#### Product Department Analysis
+
+```{r, echo = FALSE}
 ## 4. Product Department Analysis
 orders.combined %>% 
         group_by(department) %>% 
@@ -156,8 +189,12 @@ orders.combined %>%
 ## Most ordered is from produce department followed by dairy & eggs, snacks and beverages.
 
 ## Treemap package: Installed from https://github.com/wilkox/treemapify
+```
 
 
+#### Top Re-Ordered Aisles
+
+```{r, echo = FALSE, warning = FALSE, fig.width= 10}
 ## 5. Product Aisle Analysis - Most re-ordered products
 orders.combined %>%
   group_by(aisle) %>% 
@@ -167,21 +204,31 @@ orders.combined %>%
   filter(reordered == 1) %>% 
   group_by(aisle, reordered) %>% 
   summarise(re.tot.orders = n()) , by = "aisle") %>% ungroup() %>% 
-  mutate(pctOrder = 100 * (re.tot.orders/tot.orders)) %>% filter(pctOrder >= 1) %>% 
-  ggplot(aes(x = tot.orders, y = pctOrder, color = aisle)) +
-  geom_point(size = 0.1) +
-  geom_text(aes(label = aisle), size = 4) +
+  mutate(pctreOrder = 100 * (re.tot.orders/tot.orders)) %>% 
+  arrange(desc(tot.orders)) %>% top_n(25, wt = tot.orders) %>% 
+  ggplot(aes(x = tot.orders/1000, y = pctreOrder, color = aisle)) +
+  geom_point() +
+  geom_text(aes(x = (tot.orders/1000), label = aisle), size = 4, hjust = 0, vjust = 1.2) +
   guides(color = FALSE) + 
   labs(title = "Top Re-ordered Products") +
-  labs( x = "Number of Orders (in thousands)", y = "Reorders as % of Total Orders ") 
+  labs( x = "Number of Orders (in Thousands)", y = "Reorders as % of # Orders") +
+  xlim(0, 170)
 ## Fresh fruits and vegetable are the among the most re-ordered items.  
+```
 
-## Same analysis as above with word cloud
+
+#### Top 50 Most Ordered From Aisles
+
+```{r, echo = FALSE, warning = FALSE, fig.width= 10}
+## Similar analysis as above with word cloud
 ## Word Cloud
 aisle.freq <- as.data.frame(orders.combined) %>%
   group_by(aisle) %>% 
   summarise(tot.orders = n()) %>% 
-  rename(word = aisle, freq = tot.orders)
+  rename(word = aisle, freq = tot.orders) %>% 
+  arrange(desc(freq)) %>% top_n(50, wt = freq)
 
-wordcloud2::wordcloud2(aisle.freq, size = 0.6)
+wordcloud2::wordcloud2(aisle.freq %>% mutate(freq=(freq)^0.7), size = 0.5, maxRotation = 0, minRotation = 0)
 ## Reference: https://cran.r-project.org/web/packages/hunspell/vignettes/intro.html
+```
+
