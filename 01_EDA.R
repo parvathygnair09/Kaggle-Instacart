@@ -3,12 +3,17 @@
 ## Source  : Kaggle
 ## Title   : Data Pre-processing
 ## Created : August 18, 2017
-## Modified: August 22, 2017
+## Modified: August 23, 2017
 ## Authors : Parvathy & Raghuprasad
 ##========================================
 
+## Citation : “The Instacart Online Grocery Shopping Dataset 2017”, Accessed from https://www.instacart.com/datasets/grocery-shopping-2017 on August 18, 2017 from Kaggle.
+
+## Objective : Use data for exploratory analysis, test models for predicting products that a user will buy again, try for the first time etc.
+
 rm(list = ls(all = TRUE))
 
+## Load necessary libraries
 library(dplyr)
 library(summarytools)
 library(ggplot2)
@@ -44,39 +49,28 @@ filesList <- c("aisles", "departments", "order_products__prior",
 load("currentSession.RData")
 
 ## 3 million instacart orders
+
+## Product/aisle/department information
 head(aisles) ## aisle id, aisle
 head(departments)  ## department id, department
+head(products)  ## product id, product name, aisle id, dept. id
+
+## Actual orders - base dataset
 head(orders) ## order id, user id, order #, dow, hour, days since last order, eval_set
 table(orders$eval_set)
-## 3.2M - prior, 75K test, 131K - train
+## users, identified by user_id in the orders csv, make orders which are identified by order_id
+## 3.2M - prior, 75K test, 131K - train => orders 
+## unique orders - user ids not unique
 
-head(products)  ## product id, product name, aisle id, dept. id
-head(order_products__prior) ## previous orders for each customer - prior eval set
+head(order_products__prior) ## previous orders for each customer (from both test and train) - prior eval set
 head(order_products__train) ## previous orders for each customer - train eval set
-
-## Separate test, train and prior from orders dataset
-orders.train <- orders %>% filter(eval_set == "train")
-# orders.test <- orders %>% filter(eval_set == "test")
-# orders.prior <- orders %>% filter(eval_set == "prior")
 
 ##===========================
 ## Exploratory Data Analysis
 ##============================
 
-## Look at train data for now
-head(orders.train)
-
-## Combine orders from train set and extract product names, department ids and aisles
-orders.combined <- left_join(order_products__train,orders.train, by = "order_id") %>% 
-                      left_join(products, by="product_id") %>% 
-                          left_join(departments, by = "department_id") %>% 
-                              left_join(aisles, by = "aisle_id")
-
-head(orders.combined)
-dfSummary(orders.combined, style = "grid", plain.ascii = TRUE)
-
-orders.combined <- orders.combined %>%
-                           mutate(orders.weekday = ifelse(order_dow == 0, "Sunday",
+orders.mod <- orders %>% 
+  mutate(orders.weekday = ifelse(order_dow == 0, "Sunday",
                                  ifelse(order_dow == 1, "Monday",
                                         ifelse(order_dow == 2, "Tuesday",
                                                ifelse(order_dow == 3, "Wednesday",
@@ -84,16 +78,42 @@ orders.combined <- orders.combined %>%
                                                              ifelse(order_dow == 5, "Friday", "Saturday"))))))) %>% 
   mutate(orders.weekday = factor(orders.weekday,levels=c('Sunday','Monday','Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'),ordered=TRUE))
 
+## Separate test, train and prior from orders dataset
+orders.train <- orders.mod %>% filter(eval_set == "train")
+orders.test <- orders.mod %>% filter(eval_set == "test")
+orders.prior <- orders.mod %>% filter(eval_set == "prior")
+
+## Note: for each user we may have n-1 prior orders and 1 train order OR n-1 prior orders and 1 test order in which we have to state what products have been reordered
+
+## Analysis with the dataset with orders from the train set only - without considering the prior orders of the users
+head(orders.train) 
+## 131K unique orders and users
+
+## Combine orders from train set and extract product names, department ids and aisles
+orders.combined <- left_join(order_products__train,orders.train, by = "order_id") %>% 
+                      left_join(products, by="product_id") %>% 
+                          left_join(departments, by = "department_id") %>% 
+                              left_join(aisles, by = "aisle_id")
+
+## This dataset has 131,209 unique order_ids and user ids (KEYs) with multiple products in each order
+
+head(orders.combined)
+dfSummary(orders.combined, style = "grid", plain.ascii = TRUE)
+
 table(orders.combined$order_dow, orders.combined$orders.weekday)
 
 ## 1. Day of the week analysis
-orders.combined %>% 
+## Looking at unique orders in the train data
+orders.train %>% 
         mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
-        ggplot(aes(x = orders.weekday, fill = orders.weekday)) +
-        geom_bar(width = 0.5) +
+        group_by(orders.weekday) %>% 
+        summarise(tot.orders = n()) %>% 
+        ggplot(aes(x = orders.weekday, y = tot.orders, fill = orders.weekday)) +
+        geom_bar(stat = "identity", width = 0.5) +
+        geom_text(aes(label = tot.orders), hjust = -0.1) +
         labs( x = "Weekday", y = "Number of Orders") +
-        labs(title = "Purchase Pattern Day of the Week") +
-        guides(fill = FALSE) + 
+        labs(title = "Purchase Pattern Day of the Week - Train Data Only") +
+        guides(fill = FALSE) +
         coord_flip() +
         theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank()) +
@@ -103,7 +123,8 @@ orders.combined %>%
 ## Maximum orders in Sunday, followed by Saturday and Monday. Lowest on Wednesday, Thursday. 
 
 ## 2. Hour of the day analysis
-orders.combined %>% 
+## Again looking at the train data only
+orders.train %>% 
   mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
   group_by(orders.weekday, order_hour_of_day) %>% 
   summarise(tot.orders = n()) %>% group_by(orders.weekday) %>% mutate(pctOrder=100*tot.orders/sum(tot.orders)) %>% 
@@ -117,6 +138,7 @@ orders.combined %>%
   
 
 ## 3. Hour of the day analysis
+## The following analyses use the combined train datset with info on products, departments and 
 orders.combined %>% 
         mutate(orders.weekday=factor(orders.weekday,levels=rev(levels(orders.combined$orders.weekday)),ordered=T)) %>% 
         group_by(orders.weekday, order_hour_of_day) %>% 
@@ -163,25 +185,58 @@ orders.combined %>%
   group_by(aisle) %>% 
   summarise(tot.orders = n()) %>% 
   left_join(
-orders.combined %>% 
-  filter(reordered == 1) %>% 
-  group_by(aisle, reordered) %>% 
-  summarise(re.tot.orders = n()) , by = "aisle") %>% ungroup() %>% 
-  mutate(pctOrder = 100 * (re.tot.orders/tot.orders)) %>% filter(pctOrder >= 1) %>% 
-  ggplot(aes(x = tot.orders, y = pctOrder, color = aisle)) +
-  geom_point(size = 0.1) +
-  geom_text(aes(label = aisle), size = 4) +
+    orders.combined %>% 
+      filter(reordered == 1) %>% 
+      group_by(aisle, reordered) %>% 
+      summarise(re.tot.orders = n()) , by = "aisle") %>% ungroup() %>% 
+  mutate(pctreOrder = 100 * (re.tot.orders/tot.orders)) %>% 
+  arrange(desc(tot.orders)) %>% top_n(25, wt = tot.orders) %>% 
+  ggplot(aes(x = tot.orders/1000, y = pctreOrder, color = aisle)) +
+  geom_point() +
+  geom_text(aes(x = (tot.orders/1000), label = aisle), size = 4, hjust = 0, vjust = 1.2) +
   guides(color = FALSE) + 
   labs(title = "Top Re-ordered Products") +
-  labs( x = "Number of Orders (in thousands)", y = "Reorders as % of Total Orders ") 
+  labs( x = "Number of Orders (in Thousands)", y = "Reorders as % of # Orders") +
+  xlim(0, 170)
 ## Fresh fruits and vegetable are the among the most re-ordered items.  
 
-## Same analysis as above with word cloud
+## 6. Same analysis as above with word cloud
 ## Word Cloud
 aisle.freq <- as.data.frame(orders.combined) %>%
   group_by(aisle) %>% 
   summarise(tot.orders = n()) %>% 
-  rename(word = aisle, freq = tot.orders)
+  rename(word = aisle, freq = tot.orders) 
 
-wordcloud2::wordcloud2(aisle.freq, size = 0.6)
+## Most ordered from aisles
+wordcloud2::wordcloud2(aisle.freq %>% 
+                         arrange(desc(freq)) %>% top_n(50, wt = freq)
+                       %>% mutate(freq=(freq)^0.7), size = 0.5, maxRotation = 0, minRotation = 0, hoverFunction = NULL)
+
+
+## Least ordered from aisles
+wordcloud2::wordcloud2(aisle.freq %>% 
+                         arrange(desc(freq)) %>% top_n(-10, wt = freq)
+                       %>% mutate(freq=(freq)^0.7), size = 0.5, maxRotation = 0, minRotation = 0, hoverFunction = NULL)
 ## Reference: https://cran.r-project.org/web/packages/hunspell/vignettes/intro.html
+
+
+## 7. Product Analysis
+## Top 25 most ordered products
+wordcloud2::wordcloud2(orders.combined %>% 
+                         group_by(product_name) %>% 
+                         summarise(totOrders = n()) %>% 
+                         rename(word = product_name, freq = totOrders) %>% 
+                         arrange(desc(freq)) %>% top_n(100, wt = freq) %>% mutate(freq=(freq)^0.7), size = 0.5, maxRotation = 0, minRotation = 0, hoverFunction = NULL)
+## Mostly veggies and fruits
+
+
+## Least ordered products
+wordcloud2::wordcloud2(orders.combined %>% 
+                         group_by(product_name) %>% 
+                         summarise(totOrders = n()) %>% 
+                         rename(word = product_name, freq = totOrders) %>% filter(freq <= 5) %>% 
+                         arrange(freq) %>% top_n(-50, wt = freq) %>% mutate(freq=(freq)^0.2), size = 0.2, maxRotation = 0, minRotation = 0, hoverFunction = NULL)
+## Likely specialty products/ specific brands
+
+
+## Next steps : Merge datasets at user level ( train + prior orders), trace pattens on frequency of orders, average basket size etc. 
