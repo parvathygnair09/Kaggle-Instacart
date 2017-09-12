@@ -37,74 +37,71 @@ table(orders$eval_set)
 head(order_products__prior) ## previous orders for each customer (from both test and train) - prior eval set
 head(order_products__train) ## previous orders for each customer - train eval set
 
-## 1. Combine orders in train data with products train. 
+
+## 1. Data preparation for modeling
 #=======================================================
+## Combine orders in train data with products train. We will be using the training data itself to create a validation set since the test data provided does not have a label to validate predictions.
 ## Get the list of users to train
 users.train <- unique(orders.train$user_id)
 
-## users in test set
-users.test <- unique(orders.test$user_id)
-
-## Get all prior order details for the train orders
+## Get all prior order details for the train users
 orders.prior.train <- left_join(orders.prior,order_products__prior, by = "order_id") %>% 
   arrange(user_id, order_id, order_number) %>% 
   filter(user_id %in% users.train)
-
-orders.prior.all.test <- filter(orders.prior.all, user_id %in% c(1, 2, 3))
 
 ## Get all products in train orders
 orders.train.all <- left_join(orders.train,order_products__train, by = "order_id") %>% 
   arrange(user_id, order_id, order_number)
 
-
-## Get product names for clarity
-orders.prior.products <- left_join(orders.prior.all, products, by = "product_id") 
-orders.train.products <- left_join(orders.train.all, products, by = "product_id") 
 # users123 <- filter(orders.prior.products, user_id %in% c(1,2,3))
 # write.csv(users123, "users123.csv")
 
-orders.prior.all.test <- orders.prior.all
-orders.train.all.test <- orders.train.all
-
-# orders.prior.all.test <- filter(orders.prior.all, user_id %in% c(1:200))
-# orders.train.all.test <- filter(orders.train.all, user_id %in% c(1:200))
-
 ## Find the list of unique products and the number of times it has been ordered by the user.
-priors.count <- orders.prior.all.test %>% 
+priors.count <- orders.prior.train %>% 
   group_by(user_id, product_id) %>% 
   summarise(no.orders = n())
 
-## Prepare test data
-orders.prior.test <- left_join(orders.test,order_products__prior, by = "order_id") %>% 
-  arrange(user_id, order_id, order_number) %>% 
-  filter(user_id %in% users.test)
+head(priors.count)
 
+## Split this data to create test and train
+split.criteria <- unique(priors.count$user_id)
+split <- caTools::sample.split(split.criteria, SplitRatio = 0.95)
 
+sample_train = 0.01
 
+train_users <- subset(split.criteria, split == TRUE) 
+test_users <- subset(split.criteria, split == FALSE)
+train_users_run <- train_users %>% tbl_df() %>% sample_frac(sample_train)
 
 ## Data for analysis
-analz.data <- left_join(priors.count, orders.train.all %>% 
+#=======================
+## the analysis data tries to learn a logistic regression model from the prior orders on the user predicting the train order.
+train.data <- left_join(priors.count %>% filter(user_id %in% train_users_run$value), 
+                        orders.train.all %>% filter(user_id %in% train_users_run$value) %>% 
                           mutate(selected = 1) %>% 
                           select(user_id, product_id, selected), by = c("user_id", "product_id")) %>% 
   mutate(selected = ifelse(is.na(selected), 0, selected))
 
-head(analz.data)
-print(analz.data %>% 
-        filter(user_id %in% c(1:3)), n = 100)
+test.data <- left_join(priors.count %>% filter(user_id %in% test_users), 
+                        orders.train.all %>% filter(user_id %in% test_users) %>% 
+                          mutate(selected = 1) %>% 
+                          select(user_id, product_id, selected), by = c("user_id", "product_id")) %>% 
+  mutate(selected = ifelse(is.na(selected), 0, selected))
 
 ## Model 1. Logistic model
-glm.fit <- glm(selected ~ no.orders, data = analz.data, family = binomial)
+#=========================
+## This model uses a single feature - number of prior orders for a product to determine if it will be purchased or not.
+glm.fit <- glm(selected ~ no.orders, data = train.data, family = binomial)
 glm.fit
 
-
-glm.prob <- predict(glm.fit, type = "response")
-glm.pred <- rep(0, length(analz.data$selected))
+glm.prob <- predict(glm.fit, test.data, type = "response")
+glm.pred <- rep(0, length(glm.prob))
 glm.pred[glm.prob > 0.5]  <- 1
 
-table(glm.pred, analz.data$selected)
+table(glm.pred, test.data$selected)
 
 ## Prediction Accuracy
-acc <- mean(analz.data$selected == glm.pred)
+acc <- mean(test.data$selected == glm.pred)
 # accuracy 90.17%
 
 ## Precision
