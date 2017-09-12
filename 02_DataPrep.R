@@ -67,63 +67,71 @@ head(priors.count)
 split.criteria <- unique(priors.count$user_id)
 split <- caTools::sample.split(split.criteria, SplitRatio = 0.95)
 
-sample_train = 0.01
-
 train_users <- subset(split.criteria, split == TRUE) 
 test_users <- subset(split.criteria, split == FALSE)
-train_users_run <- train_users %>% tbl_df() %>% sample_frac(sample_train)
 
-## Data for analysis
-#=======================
-## the analysis data tries to learn a logistic regression model from the prior orders on the user predicting the train order.
-train.data <- left_join(priors.count %>% filter(user_id %in% train_users_run$value), 
-                        orders.train.all %>% filter(user_id %in% train_users_run$value) %>% 
-                          mutate(selected = 1) %>% 
-                          select(user_id, product_id, selected), by = c("user_id", "product_id")) %>% 
-  mutate(selected = ifelse(is.na(selected), 0, selected))
 
-test.data <- left_join(priors.count %>% filter(user_id %in% test_users), 
+output <- NULL
+
+getSampleRuns <- function(samp_size) {
+    sample_train <- samp_size
+    train_users_run <- train_users %>% tbl_df() %>% sample_frac(sample_train)
+
+     ## Data for analysis
+     #=======================
+     ## the analysis data tries to learn a logistic regression model from the prior orders on the user predicting the      train order.
+     train.data <- left_join(priors.count %>% filter(user_id %in% train_users_run$value), 
+                             orders.train.all %>% filter(user_id %in% train_users_run$value) %>% 
+                               mutate(selected = 1) %>% 
+                               select(user_id, product_id, selected), by = c("user_id", "product_id")) %>% 
+       mutate(selected = ifelse(is.na(selected), 0, selected))
+     
+     test.data <- left_join(priors.count %>% filter(user_id %in% test_users), 
                         orders.train.all %>% filter(user_id %in% test_users) %>% 
                           mutate(selected = 1) %>% 
                           select(user_id, product_id, selected), by = c("user_id", "product_id")) %>% 
-  mutate(selected = ifelse(is.na(selected), 0, selected))
+        mutate(selected = ifelse(is.na(selected), 0, selected))
 
-## Model 1. Logistic model
-#=========================
-## This model uses a single feature - number of prior orders for a product to determine if it will be purchased or not.
-glm.fit <- glm(selected ~ no.orders, data = train.data, family = binomial)
-glm.fit
+     ## Model 1. Logistic model
+     #=========================
+     ## This model uses a single feature - number of prior orders for a product to determine if it will be purchased      or not.
+     glm.fit <- glm(selected ~ no.orders, data = train.data, family = binomial)
+     glm.fit
+     
+     glm.prob <- predict(glm.fit, test.data, type = "response")
+     glm.pred <- rep(0, length(glm.prob))
+     glm.pred[glm.prob > 0.5]  <- 1
+     
+     table(glm.pred, test.data$selected)
+     
+     ## Prediction Accuracy
+     acc <- mean(test.data$selected == glm.pred)
+     
+     ## Test Error
+     err <- 1 - acc
+     
+     ## Precision
+     precsn <- mean(test.data$selected[glm.pred == 1] == 1)
+     
+     ## Recall
+     recall <- mean(glm.pred[test.data$selected== 1] == 1)
 
-glm.prob <- predict(glm.fit, test.data, type = "response")
-glm.pred <- rep(0, length(glm.prob))
-glm.pred[glm.prob > 0.5]  <- 1
+     temp <- cbind(sample = sample_train * length(train_users), acc, err, precsn, recall)
 
-table(glm.pred, test.data$selected)
-
-## Prediction Accuracy
-acc <- mean(test.data$selected == glm.pred)
-# accuracy 90.17%
-
-## Precision
-precsn <- mean(analz.data$selected[glm.pred == 1] == 1)
-# precision 47.5%
-
-## Recall
-recall <- mean(glm.pred[analz.data$selected == 1] == 1)
-# Recall 4.7%
+     output <<- as.data.frame(rbind(output, temp))
+}
 
 
-
-
-
-
-
-
+getSampleRuns(0.01)
+getSampleRuns(0.02)
+getSampleRuns(0.05)
+getSampleRuns(0.20)
+output
 
 
 
 #==================================================================
-### Preliminary market basket analysis
+### Preliminary market basket analysis -- arules package
 
 # trans <- as(split(orders.prior.products[,"product_name"], orders.prior.products[, "order_id"]), "transactions")
 
