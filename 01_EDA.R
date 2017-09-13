@@ -38,15 +38,9 @@ filesList <- c("aisles", "departments", "order_products__prior",
                "order_products__train", "orders", "products")
 # lapply(filesList, readFiles)
 
-# Saving the environment to avoid reading the files everytime
-# save.image("./initialRead.RData")
-# load("./initialRead.RData")
-
 ##===================
 ## Data Summary
 ##===================
-
-load("currentSession.RData")
 
 ## 3 million instacart orders
 
@@ -68,7 +62,6 @@ head(order_products__train) ## previous orders for each customer - train eval se
 ##===========================
 ## Exploratory Data Analysis
 ##============================
-
 orders.mod <- orders %>% 
   mutate(orders.weekday = ifelse(order_dow == 0, "Sunday",
                                  ifelse(order_dow == 1, "Monday",
@@ -82,6 +75,11 @@ orders.mod <- orders %>%
 orders.train <- orders.mod %>% filter(eval_set == "train")
 orders.test <- orders.mod %>% filter(eval_set == "test")
 orders.prior <- orders.mod %>% filter(eval_set == "prior")
+
+# Saving the environment to avoid reading the files everytime
+# save.image("./currentSession.RData")
+
+load("currentSession.RData")
 
 ## Note: for each user we may have n-1 prior orders and 1 train order OR n-1 prior orders and 1 test order in which we have to state what products have been reordered
 

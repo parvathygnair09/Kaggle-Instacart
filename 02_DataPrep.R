@@ -80,13 +80,13 @@ getSampleRuns <- function(samp_size) {
      ## Data for analysis
      #=======================
      ## the analysis data tries to learn a logistic regression model from the prior orders on the user predicting the      train order.
-     train.data <- left_join(priors.count %>% filter(user_id %in% train_users_run$value), 
+     train.data <- left_join(data.table(priors.count)[user_id %in% train_users_run$value], 
                              orders.train.all %>% filter(user_id %in% train_users_run$value) %>% 
                                mutate(selected = 1) %>% 
                                select(user_id, product_id, selected), by = c("user_id", "product_id")) %>% 
        mutate(selected = ifelse(is.na(selected), 0, selected))
      
-     test.data <- left_join(priors.count %>% filter(user_id %in% test_users), 
+     test.data <- left_join(data.table(priors.count)[user_id %in% test_users], 
                         orders.train.all %>% filter(user_id %in% test_users) %>% 
                           mutate(selected = 1) %>% 
                           select(user_id, product_id, selected), by = c("user_id", "product_id")) %>% 
@@ -102,6 +102,9 @@ getSampleRuns <- function(samp_size) {
      glm.pred <- rep(0, length(glm.prob))
      glm.pred[glm.prob > 0.5]  <- 1
      
+     ## For Probabilistic Prediction
+     # glm.pred = (runif(length(glm.prob)) <= glm.prob) * 1
+     
      table(glm.pred, test.data$selected)
      
      ## Prediction Accuracy
@@ -116,16 +119,18 @@ getSampleRuns <- function(samp_size) {
      ## Recall
      recall <- mean(glm.pred[test.data$selected== 1] == 1)
 
-     temp <- cbind(sample = sample_train * length(train_users), acc, err, precsn, recall)
+     temp <- cbind(sample = nrow(train_users_run), acc, err, precsn, recall)
 
      output <<- as.data.frame(rbind(output, temp))
 }
 
 
+getSampleRuns(0.0001)
+getSampleRuns(0.0005)
+getSampleRuns(0.001)
+getSampleRuns(0.005)
 getSampleRuns(0.01)
-getSampleRuns(0.02)
-getSampleRuns(0.05)
-getSampleRuns(0.20)
+
 output
 
 
