@@ -3,7 +3,7 @@
 ## Source  : Kaggle
 ## Title   : Data Pre-processing
 ## Created : August 23, 2017
-## Modified: August 23, 2017
+## Modified: September 13, 2017
 ## Authors : Parvathy & Raghuprasad
 ##========================================
 
@@ -133,24 +133,11 @@ getSampleRuns(0.01)
 
 output
 
+## Summary: No significant changes in accuracy or precision. This may be attributed to the logistic model and/or the fact that ther is just one predictor variable involved. Next steps would be adding new variables to the model and trying alternate algorithms.
 
 
-#==================================================================
-### Preliminary market basket analysis -- arules package
-
-# trans <- as(split(orders.prior.products[,"product_name"], orders.prior.products[, "order_id"]), "transactions")
-
-trans <- data.table(orders.prior.products)[,list(product_name),by='order_id']
-temp <- lapply(unique(orders.prior.products$order_id),function(x) data.table(orders.prior.products)[order_id==x,product_name])
-trans <- as(temp,"transactions")
 
 
-#Run the apriori algorithm
-m1 <- apriori(Groceries,parameter = list(support=.007, confidence=.25,minlen=2))
-
-#Check the rules
-inspect(m1[1:10])
-inspect(sort(m1,by="lift")[1:4])
 
 
 
